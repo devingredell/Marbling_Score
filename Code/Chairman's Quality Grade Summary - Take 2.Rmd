@@ -1,0 +1,269 @@
+---
+title: "Chairman's Reserve Quality Grade Summary"
+author: "Devin Gredell - Fresh Meat Research"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output: 
+  html_document:
+    css: "tyson_style.css"
+    toc: true
+    toc_float: true
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+	echo = FALSE,
+	error = FALSE,
+	fig.align = "center",
+	fig.height = 9.5,
+	fig.width = 12,
+	dpi = 300,
+	message = FALSE,
+	warning = FALSE,
+	dev = "png", # save plots as png
+	fig.path = "../Figures/Take 2/" # location to save plot pngs
+)
+
+library(tidyverse)
+library(kableExtra)
+library(rstanarm)
+library(ggridges)
+library(qcc)
+
+source(here::here("Code", "my_functions.R"))
+```
+
+```{r ggplot formatting}
+# creates a gradient color scheme for discrete variables
+discrete_gradient <- colorRampPalette(c("white", "#002453"))
+
+cols <- discrete_gradient(7)[-1]
+
+options(ggplot2.discrete.colour = cols,
+        ggplot2.distrete.fill = cols)
+
+theme_set(tyson_theme())
+```
+
+```{r data}
+source(here::here("Code", "clean_data.R"))
+
+dat <- subset_dat
+```
+
+# Marbling Groups
+
+```{r marbling distribution}
+
+p <- dat%>%
+  ggplot(aes(x = marbling_score, y = group, fill = group, color = group)) +
+  geom_jitter(size = 3) +
+  scale_x_continuous(
+    breaks = seq(300, 1000, 100),
+    labels = seq(300, 1000, 100)) +
+  tyson_theme() +
+  scale_fill_manual(values = cols) +
+  scale_color_manual(values = cols) +
+  scale_y_discrete(labels = c("Small 00",
+                                "Small 50",
+                                "Modest\n(Middle 1/3rd)",
+                                "Top Choice\n(Upper 2/3rd)",
+                                "Moderate\n(Upper 1/3rd)",
+                                "Prime")) +
+  labs(x = "Marbling Score",
+       y = NULL) +
+  theme(panel.grid.major.x = element_line(color = "grey92"),
+        legend.position = "none")
+
+# marb groups for table
+marb_groups <- tibble("Marbling Group" =
+                        c("Prime",
+                          "Moderate (Upper 1/3rd)",
+                          "Top Choice (Upper 2/3rd)",
+                          "Modest (Middle 1/3rd)",
+                          "Small 50",
+                          "Small 00"),
+                      "Marbling Score Range" =
+                        c("Slightly Abundant 00 - Moderately Abundant 99",
+                          "Moderate 00 - Moderate 99",
+                          "Modest 00 - Moderate 99",
+                          "Modest 00 - Modest 99",
+                          "Small 50 - Small 99",
+                          "Small 00 - Small 49"))
+
+marb_table <- ggpubr::ggtexttable(marb_groups, rows = NULL,
+                                  theme = ggpubr::ttheme(
+                                    tbody.style = ggpubr::tbody_style(
+                                      hjust = 0,
+                                      x = 0.02,
+                                      fill = "white",
+                                      linecolor = "#002453",
+                                      color = "#002453"),
+                                    colnames.style = ggpubr::colnames_style(
+                                      fill = "#ECF3F8",
+                                      linecolor = "#002453",
+                                      color = "#002453",
+                                      face = "bold")))
+
+figure <- ggpubr::ggarrange(p, marb_table, ncol = 1, 
+                            heights = c(2, 1))
+
+ggpubr::annotate_figure(figure, 
+                        fig.lab = "Data Source: Emerson et al. (2013)",
+                        fig.lab.pos = "bottom.left",
+                        fig.lab.size = 14)
+
+```
+
+# Marbling Score and Eating Quality
+```{r marbling score vs eq prob, results = "hide"}
+marbling_score_model <- rstanarm::stan_glm(eq_cat ~ marbling_score, data = dat,
+                        family = binomial(link = "logit"),
+                        seed = 13)
+
+marbling_score_predicted <- dat %>% 
+  mutate(probs = predict(marbling_score_model, dat, type = "response",
+                         se.fit = T)$fit,
+         se = predict(marbling_score_model, dat, type = "response", 
+                      se.fit = T)$se.fit)
+
+p <- marbling_score_predicted %>% 
+  ggplot(aes(x = marbling_score, y = probs)) +
+  geom_ribbon(aes(ymin = probs - se, ymax = probs + se),
+              fill = "#002453", color = NA, alpha = 0.2) +
+  geom_line(size = 1.5) +
+  scale_y_continuous(labels = scales::percent) +
+  labs(x = "Marbling Score",
+       y = "Probability",
+       title = str_wrap("The probability of a positive eating experience increases with marbling score.", width = 45)) +
+  theme(panel.grid.major.x = element_line(color = "grey92"))
+
+figure <- ggpubr::ggarrange(p)
+
+ggpubr::annotate_figure(figure, 
+                        fig.lab = "Data Source: Emerson et al. (2013)",
+                        fig.lab.pos = "bottom.left",
+                        fig.lab.size = 14)
+```
+
+# Sensory Rating Distributions {.tabset .tabset-pills style="color: #002453"}
+
+## Overall Sensory Experience
+```{r overall density}
+mean_density_plot("overall_sensory_experience", dat,
+                   prob_title = "Probability of a Positive Eating Experience*",
+                   footnote_text = "*Calculated as the percentage of samples rated above 7.5.")
+```
+
+## Tenderness
+```{r tenderness density}
+mean_density_plot("tenderness", dat,
+                   prob_title = "Probability of a Tender Steak*",
+                   footnote_text = "*Calculated as the percentage of samples rated above 7.5.")
+```
+
+## Juiciness
+```{r juiciness density}
+mean_density_plot("juiciness", dat,
+                   prob_title = "Probability of a Juicy Steak*",
+                   footnote_text = "*Calculated as the percentage of samples rated above 7.5.")
+```
+
+## Shear Force
+```{r shear force density}
+
+#### calculate mean and standard deviation
+params <- dat %>%
+  filter(!is.na(shear_force)) %>%
+  group_by(group) %>%
+  summarize(mean = mean(shear_force, na.rm = T),
+            sd = sd(shear_force, na.rm = T),
+            meanlog = fitdistrplus::fitdist(shear_force, "lnorm")$estimate[[1]],
+            sdlog = fitdistrplus::fitdist(shear_force, "lnorm")$estimate[[2]])
+
+
+#### create logn norm data for density curve
+logn_data <- list()
+set.seed(13)
+for(i in seq_along(levels(params$group))){
+  
+  logn_data[[i]] <- tibble(group = params[i, ]$group,
+                          value = rlnorm(1000000,
+                                         meanlog = params[i, ]$meanlog,
+                                         sdlog = params[i, ]$sdlog))
+  
+}
+
+logn_data <- bind_rows(logn_data)
+
+#### build plot
+p <- logn_data %>%
+  ggplot(aes(x = value, y = group, fill = group)) +
+  geom_density_ridges(quantile_lines = TRUE,
+                        quantile_fun = function(x,...)mean(x),
+                        size = 1) +
+  geom_vline(xintercept = 3.9, size = 1.5) +
+  scale_y_discrete(expand = c(0, 0.4),
+                   labels = c("Small 00",
+                              "Small 50",
+                              "Modest\n(Middle 1/3rd)",
+                              "Top Choice\n(Upper 2/3rd)",
+                              "Moderate\n(Upper 1/3rd)",
+                              "Prime")) +
+  scale_x_continuous(limits = c(0, 7),
+                     breaks = seq(0, 7),
+                     expand = c(.08, .08)) +
+  labs(x = "Warner-Bratzler Shear Force, kg",
+       y = NULL) +
+  theme(legend.position = "none")
+
+### data for table
+probs <- logn_data %>%
+  group_by(group) %>%
+  filter(value <= 3.9) %>%
+  count() %>%
+  inner_join(., params) %>%
+  mutate(mean = round(mean, 1),
+         logn_prob = round((n / 1000000) * 100, 0),
+         logn_prob = paste0(logn_prob, "%")) %>%
+  arrange(rev(group)) %>%
+  select(-c(n, sd:sdlog))
+
+
+
+prob_title <- "Probability of a Certified Very Tender Steak*"
+
+names(probs) <- c("Marbling Group", 
+                  "Average",
+                  str_wrap(prob_title, width = 20))
+
+#### build table
+footnote_text <- "*Calculated as the percentage of samples with a shear force value below 3.9 kg (ASTM - F2925)."
+
+table <- ggpubr::ggtexttable(probs, rows = NULL,
+                             theme = ggpubr::ttheme(
+                               tbody.style = ggpubr::tbody_style(
+                                 hjust = 0,
+                                 x = 0.06,
+                                 fill = "white",
+                                 linecolor = "#002453",
+                                 color = "#002453"),
+                               colnames.style = ggpubr::colnames_style(
+                                 vjust = 0.5,
+                                 y = c(0.2, 0.2, 0.5),
+                                 fill = "#ECF3F8",
+                                 linecolor = "#002453",
+                                 color = "#002453",
+                                 face = "bold"))) %>%
+  ggpubr::tab_add_footnote(text = str_wrap(footnote_text, width = 50),
+                           color = "#002453")
+
+
+#### final plot + table
+figure <- ggpubr::ggarrange(p, table, ncol = 1,
+                  heights = c(2, 1))
+
+ggpubr::annotate_figure(figure, 
+                        fig.lab = "Data Source: Emerson et al. (2013)",
+                        fig.lab.pos = "bottom.left",
+                        fig.lab.size = 14)
+```

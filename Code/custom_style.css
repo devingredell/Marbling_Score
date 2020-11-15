@@ -1,0 +1,54 @@
+<style type="text/css">
+
+  div.main-container {
+    max-width: 3000px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+body{ /* Settings here will carry over the entire document or you can specify in each section individually  */
+    font-family: Calibri;
+  font-size: 22px;
+  color: #002453;
+}
+td {  /* Table  */
+    font-size: 8px;
+}
+h1.title {
+  font-size: 50px;
+    background-color: White;
+  text-align: center
+}
+h1 { /* Header 1 */
+    font-size: 35px;
+    background-color: #D4DAEC;
+    text-align: center
+}
+h2 { /* Header 2 */
+    font-size: 22px;
+    background-color: #D4DAEC
+}
+h3 { /* Header 3 */
+    font-size: 18px;
+  font-family: "Times New Roman", Times, serif;
+}
+code.r{ /* Code block */
+    font-size: 12px;
+}
+pre { /* Code block - determines code spacing between lines */
+    font-size: 14px;
+}
+
+.nav>li>a { /* Color of non-active tab */
+    position: relative;
+  display: block;
+  padding: 10px 15px;
+  color: #002453;
+    font-weight: 600;
+}
+
+.nav-pills>li.active>a, .nav-pills>li.active>a:hover, .nav-pills>li.active>a:focus { /* Color of active tab */
+    color: #002453;
+    background-color: #D4DAEC;
+}
+</style>
