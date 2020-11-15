@@ -10,9 +10,10 @@ og_dat <- readxl::read_excel(
 
 
 
-all_dat <- og_dat %>%
+dat <- og_dat %>%
   
   select(group,
+         marbling_score = me_high,
          sex,
          hump_height,
          ph = p_h,
@@ -28,13 +29,16 @@ all_dat <- og_dat %>%
          metallic = metallic_bloody_serumy,
          liver_organy,
          grassy
-         ) %>%
+  ) %>%
   
   mutate(eq_cat = case_when(overall > 7.5 ~ "Positive",
                             TRUE ~ "Negative"),
          tender_cat = case_when(wbsf > 3.9 ~ "Tough",
                                 TRUE ~ "Tender")) %>%
   
-  mutate(tender_cat = factor(tender_cat, levels = c("Tough", "Tender")),
+  mutate(eq_cat = factor(eq_cat, levels = c("Negative", "Positive")),
+         tender_cat = factor(tender_cat, levels = c("Tough", "Tender")),
          group = factor(group, levels = c("TR", "SL", "SM", "MT",
-                                                  "MD", "SA", "MA")))
+                                          "MD", "SA", "MA")))
+
+rm(og_dat)
