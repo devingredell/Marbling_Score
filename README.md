@@ -5,7 +5,7 @@ December 07, 2020
 
 # Marbling Groups
 
-<img src="../Figures/Take 2/marbling distribution-1.png" style="display: block; margin: auto;" />
+<img src="Figures/Take 2/marbling distribution-1.png" style="display: block; margin: auto;" />
 
 # Marbling Score and Eating Quality
 
